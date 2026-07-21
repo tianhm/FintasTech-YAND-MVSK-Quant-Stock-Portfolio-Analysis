@@ -67,7 +67,7 @@ const tutorialCopy = {
       {
         title: "5. Equity Curve",
         body:
-          "The equity curve shows how one dollar would grow during the test period. The green line is MVSK and the violet line is MV. Smooth growth with smaller drawdowns is usually healthier than a single late spike.",
+          "The equity curve shows how one dollar would grow during the test period. The green line is MVSK, the violet line is MV, and the dashed gray line is the equal-weight 1/N portfolio. Smooth growth with smaller drawdowns is usually healthier than a single late spike.",
         bullets: [
           "Look for when MVSK wins: calm markets, rallies, or stress periods.",
           "Check whether outperformance comes from steady gains or one lucky jump.",
@@ -92,6 +92,16 @@ const tutorialCopy = {
           "Lower KKT residual means the optimizer stopped closer to a stationary point.",
           "More iterations can be normal for larger or more anisotropic universes.",
           "Diagnostics help separate financial results from numerical accidents."
+        ]
+      },
+      {
+        title: "8. Baselines and Realized Moments",
+        body:
+          "The comparison table adds two honesty checks. The 1/N column shows the naive equal-weight portfolio, which academic studies find surprisingly hard to beat. Realized skewness and excess kurtosis measure the actual distribution shape of out-of-sample returns: if MVSK truly works, they should improve relative to MV, not just the headline return.",
+        bullets: [
+          "If MVSK cannot beat 1/N after costs, the optimization is not adding value on this universe.",
+          "Improved realized skewness (less negative) and lower excess kurtosis are the direct evidence that higher moments mattered.",
+          "The screening step only sees the training window, so selection cannot peek at test-period data."
         ]
       }
     ],
@@ -158,7 +168,7 @@ const tutorialCopy = {
       {
         title: "5. 净值曲线",
         body:
-          "净值曲线展示测试期内 1 美元会如何增长。绿色线是 MVSK，紫色线是 MV。通常，持续平稳上涨且回撤更小，比最后突然暴涨一次更健康。",
+          "净值曲线展示测试期内 1 美元会如何增长。绿色线是 MVSK，紫色线是 MV，灰色虚线是等权 1/N 组合。通常，持续平稳上涨且回撤更小，比最后突然暴涨一次更健康。",
         bullets: [
           "观察 MVSK 是在平稳期、上涨期还是压力期赢了 MV。",
           "检查超额收益来自持续优势，还是某一次幸运跳升。",
@@ -184,6 +194,16 @@ const tutorialCopy = {
           "股票数更多、几何更各向异性时，迭代次数变多很正常。",
           "诊断能帮助你区分金融结果和数值求解偶然性。"
         ]
+      },
+      {
+        title: "8. 基线与实现矩",
+        body:
+          "对比表新增了两个诚实性检查。1/N 列是朴素等权组合——学术研究发现它出人意料地难被打败。实现偏度和实现超额峰度衡量样本外收益分布的真实形状：如果 MVSK 真的有效，这两个指标应该相对 MV 改善，而不只是表面收益更高。",
+        bullets: [
+          "如果扣除成本后 MVSK 连 1/N 都跑不赢，说明优化在这个股票池上没有创造价值。",
+          "实现偏度改善（less negative）和超额峰度降低，才是高阶矩发挥作用的直接证据。",
+          "筛选步骤只看训练窗口数据，选股不会偷看测试期信息。"
+        ]
       }
     ],
     workflowTitle: "如何应用到股票量化分析",
@@ -206,16 +226,16 @@ export default function TutorialPage() {
   const t = tutorialCopy[language];
 
   return (
-    <main className="grain min-h-screen px-6 py-6 text-ice md:px-10">
+    <main className="min-h-screen bg-paper px-6 py-6 text-ink md:px-10">
       <nav className="mx-auto flex max-w-7xl items-center justify-between">
-        <Link className="flex items-center gap-3 text-white/80 transition hover:text-white" href="/">
-          <span className="brand-logo grid h-12 w-12 place-items-center rounded-2xl border border-white/70 p-1.5">
+        <Link className="flex items-center gap-3 text-sub transition hover:text-ink" href="/">
+          <span className="brand-logo grid h-12 w-12 place-items-center rounded-2xl p-1.5">
             <img className="h-full w-full object-contain" src="/fintastech-logo-white-bg.svg" alt="FintasTech logo" />
           </span>
-          <span className="hidden rounded-full border border-white/15 px-4 py-2 text-sm md:inline-flex">{t.back}</span>
+          <span className="hidden rounded-full border border-line bg-card px-4 py-2 text-sm md:inline-flex">{t.back}</span>
         </Link>
         <div className="flex items-center gap-3">
-          <Link className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/70 transition hover:text-white md:hidden" href="/">
+          <Link className="rounded-full border border-line bg-card px-4 py-2 text-sm text-sub transition hover:text-ink md:hidden" href="/">
             {t.back}
           </Link>
           <LanguageToggle language={language} onChange={setLanguage} />
@@ -223,22 +243,22 @@ export default function TutorialPage() {
       </nav>
 
       <section className="mx-auto max-w-5xl py-16">
-        <p className="mb-5 inline-flex rounded-full border border-mint/20 bg-mint/10 px-4 py-2 text-sm text-mint">
+        <p className="mb-5 inline-flex rounded-full bg-accent-soft px-4 py-2 text-sm font-medium text-accent-deep">
           {t.eyebrow}
         </p>
-        <h1 className="display-tight font-display text-5xl font-medium leading-[0.95] md:text-7xl">{t.title}</h1>
-        <p className="mt-6 max-w-3xl text-lg leading-8 text-white/68">{t.intro}</p>
+        <h1 className="display-tight font-display text-5xl font-medium leading-[1.02] md:text-7xl">{t.title}</h1>
+        <p className="mt-6 max-w-3xl text-lg leading-8 text-sub">{t.intro}</p>
       </section>
 
       <section className="mx-auto grid max-w-7xl gap-5 pb-12 lg:grid-cols-[1fr_360px]">
         <div className="grid gap-5">
           {t.sections.map((section) => (
-            <article key={section.title} className="glass rounded-[1.75rem] p-6">
+            <article key={section.title} className="card rounded-[1.75rem] p-6">
               <h2 className="font-display text-3xl font-medium italic">{section.title}</h2>
-              <p className="mt-4 leading-7 text-white/68">{section.body}</p>
+              <p className="mt-4 leading-7 text-sub">{section.body}</p>
               <div className="mt-5 grid gap-3">
                 {section.bullets.map((bullet) => (
-                  <div key={bullet} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-white/72">
+                  <div key={bullet} className="rounded-2xl border border-line bg-paper p-4 text-sm leading-6 text-sub">
                     {bullet}
                   </div>
                 ))}
@@ -247,21 +267,21 @@ export default function TutorialPage() {
           ))}
         </div>
 
-        <aside className="glass h-fit rounded-[1.75rem] p-6 lg:sticky lg:top-6">
+        <aside className="card h-fit rounded-[1.75rem] p-6 lg:sticky lg:top-6">
           <h2 className="font-display text-3xl font-medium italic">{t.workflowTitle}</h2>
           <ol className="mt-5 space-y-4">
             {t.workflow.map((step, index) => (
-              <li key={step} className="flex gap-3 text-sm leading-6 text-white/72">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-mint/15 text-mint">
+              <li key={step} className="flex gap-3 text-sm leading-6 text-sub">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent-soft font-semibold text-accent-deep">
                   {index + 1}
                 </span>
                 <span>{step}</span>
               </li>
             ))}
           </ol>
-          <div className="mt-6 rounded-2xl border border-violet/25 bg-violet/10 p-4">
+          <div className="mt-6 rounded-2xl border border-violet/20 bg-violet-soft p-4">
             <h3 className="font-semibold text-violet">{t.warningTitle}</h3>
-            <p className="mt-2 text-sm leading-6 text-white/68">{t.warning}</p>
+            <p className="mt-2 text-sm leading-6 text-sub">{t.warning}</p>
           </div>
         </aside>
       </section>

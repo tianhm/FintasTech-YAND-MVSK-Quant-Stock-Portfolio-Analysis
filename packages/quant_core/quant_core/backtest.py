@@ -35,7 +35,9 @@ def run_static_backtest(
     equity = np.cumprod(1.0 + portfolio_returns)
     drawdown = equity / np.maximum.accumulate(equity) - 1.0
     metrics = compute_metrics(portfolio_returns, config.periods_per_year)
-    metrics["max_drawdown"] = float(drawdown.min()) if drawdown.size else 0.0
+    max_drawdown = float(drawdown.min()) if drawdown.size else 0.0
+    metrics["max_drawdown"] = max_drawdown
+    metrics["calmar"] = metrics["annual_return"] / abs(max_drawdown) if max_drawdown < -1e-12 else 0.0
     metrics["effective_assets"] = effective_number(weights)
     metrics["top_5_weight"] = float(np.sort(weights)[-5:].sum()) if weights.size >= 5 else float(weights.sum())
 
@@ -56,11 +58,19 @@ def compute_metrics(returns: np.ndarray, periods_per_year: int = 252) -> dict[st
             "sortino": 0.0,
             "cvar_1": 0.0,
             "cvar_5": 0.0,
+            "realized_skewness": 0.0,
+            "realized_excess_kurtosis": 0.0,
         }
     annual_return = float((np.prod(1.0 + returns) ** (periods_per_year / returns.size)) - 1.0)
-    annual_vol = float(np.std(returns, ddof=0) * np.sqrt(periods_per_year))
+    std = float(np.std(returns, ddof=0))
+    annual_vol = std * np.sqrt(periods_per_year)
     downside = returns[returns < 0]
     downside_vol = float(np.std(downside, ddof=0) * np.sqrt(periods_per_year)) if downside.size else 0.0
+    centered = returns - returns.mean()
+    # Realized higher moments of the out-of-sample portfolio returns: the direct check of whether
+    # an MVSK allocation actually delivered a better distribution shape than its baselines.
+    skewness = float(np.mean(centered**3) / std**3) if std > 1e-12 else 0.0
+    excess_kurtosis = float(np.mean(centered**4) / std**4 - 3.0) if std > 1e-12 else 0.0
     return {
         "annual_return": annual_return,
         "annual_volatility": annual_vol,
@@ -68,6 +78,8 @@ def compute_metrics(returns: np.ndarray, periods_per_year: int = 252) -> dict[st
         "sortino": annual_return / downside_vol if downside_vol > 1e-12 else 0.0,
         "cvar_1": _cvar(returns, 0.01),
         "cvar_5": _cvar(returns, 0.05),
+        "realized_skewness": skewness,
+        "realized_excess_kurtosis": excess_kurtosis,
     }
 
 

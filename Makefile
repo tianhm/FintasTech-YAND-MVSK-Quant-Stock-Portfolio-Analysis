@@ -5,7 +5,7 @@ PYTEST := $(VENV)/bin/pytest
 UVICORN := $(VENV)/bin/uvicorn
 NPM := npm --prefix apps/web
 
-.PHONY: setup ensure api web dev test
+.PHONY: setup ensure api web dev test lint
 
 setup:
 	$(PYTHON) -m venv $(VENV)
@@ -32,3 +32,6 @@ dev: ensure
 test:
 	$(PYTEST)
 	cd apps/web && npm run build
+
+lint:
+	$(VENV)/bin/ruff check packages apps tests

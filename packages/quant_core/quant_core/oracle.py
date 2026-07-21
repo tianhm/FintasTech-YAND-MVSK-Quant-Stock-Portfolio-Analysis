@@ -26,6 +26,40 @@ class MVSKCoefficients:
             raise ValueError(f"Unknown MVSK preset: {name}")
         return presets[name]
 
+    @classmethod
+    def crra(cls, gamma: float) -> "MVSKCoefficients":
+        """Standard CRRA fourth-order Taylor calibration used in the paper.
+
+        Expanding U(w) = w^(1-gamma)/(1-gamma) to fourth order around expected wealth gives the
+        moment weights c1 = 1, c2 = gamma/2, c3 = gamma(gamma+1)/6, c4 = gamma(gamma+1)(gamma+2)/24.
+        """
+
+        if gamma <= 0:
+            raise ValueError("CRRA gamma must be positive")
+        return cls(
+            mean=1.0,
+            variance=gamma / 2.0,
+            skewness=gamma * (gamma + 1.0) / 6.0,
+            kurtosis=gamma * (gamma + 1.0) * (gamma + 2.0) / 24.0,
+        )
+
+    @property
+    def convexity_certified(self) -> bool:
+        """Coefficient-only convexity certificate from the paper.
+
+        The scalar response psi(s) = c2 s^2 - c3 s^3 + c4 s^4 has psi''(s) = 2c2 - 6c3 s + 12c4 s^2.
+        psi'' > 0 for every s (hence f is convex on the simplex regardless of the data map) iff
+        c2 > 0 and either c3 = c4 = 0 or (c4 > 0 and 3 c3^2 < 8 c2 c4).
+        """
+
+        if self.variance <= 0:
+            return False
+        if self.kurtosis == 0.0:
+            return self.skewness == 0.0
+        if self.kurtosis < 0:
+            return False
+        return 3.0 * self.skewness**2 < 8.0 * self.variance * self.kurtosis
+
     def as_array(self) -> np.ndarray:
         return np.array([self.mean, self.variance, self.skewness, self.kurtosis], dtype=float)
 
@@ -88,6 +122,18 @@ class MVSKOracle:
             + (4.0 * c.kurtosis / self.t) * (self.a.T @ (z**3))
         )
         return float(value), np.asarray(grad, dtype=float)
+
+    def psi_second(self, z: np.ndarray) -> np.ndarray:
+        """Componentwise psi''(z) = 2c2 - 6c3 z + 12c4 z^2 (curvature weights per sample)."""
+
+        c = self.coefficients
+        return 2.0 * c.variance - 6.0 * c.skewness * z + 12.0 * c.kurtosis * z**2
+
+    def psi_third(self, z: np.ndarray) -> np.ndarray:
+        """Componentwise psi'''(z) = -6c3 + 24c4 z (third-order weights per sample)."""
+
+        c = self.coefficients
+        return -6.0 * c.skewness + 24.0 * c.kurtosis * z
 
     def hvp(self, x: np.ndarray, v: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=float)

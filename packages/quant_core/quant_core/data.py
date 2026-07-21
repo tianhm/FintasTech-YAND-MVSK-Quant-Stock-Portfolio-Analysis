@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +29,8 @@ class MarketDataConfig:
     interval: str = "1d"
     cache_dir: str = "data/cache"
     auto_adjust: bool = True
+    # Open-ended (end=None) downloads go stale as new bars arrive; refresh them after this TTL.
+    open_end_cache_ttl_seconds: float = 24 * 3600.0
 
 
 def load_price_history(config: MarketDataConfig) -> pd.DataFrame:
@@ -36,10 +40,18 @@ def load_price_history(config: MarketDataConfig) -> pd.DataFrame:
     cache_dir = Path(config.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     end_part = config.end or "latest"
-    key = "_".join(tickers)[:120].replace("/", "-")
-    cache_file = cache_dir / f"{key}_{config.start}_{end_part}_{config.interval}.parquet"
+    # Hash the full request so long ticker lists cannot collide after truncation.
+    digest_source = "|".join((*tickers, config.start, end_part, config.interval))
+    digest = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()[:16]
+    label = (tickers[0] if tickers else "empty").replace("/", "-")
+    cache_file = cache_dir / f"{label}_{len(tickers)}assets_{digest}.parquet"
     if cache_file.exists():
-        return pd.read_parquet(cache_file)
+        is_fresh = (
+            config.end is not None
+            or time.time() - cache_file.stat().st_mtime < config.open_end_cache_ttl_seconds
+        )
+        if is_fresh:
+            return pd.read_parquet(cache_file)
 
     try:
         import yfinance as yf

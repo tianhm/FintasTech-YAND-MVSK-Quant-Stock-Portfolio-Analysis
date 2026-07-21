@@ -9,7 +9,7 @@ type LanguageToggleProps = {
 
 export function LanguageToggle({ language, onChange }: LanguageToggleProps) {
   return (
-    <div className="flex rounded-full border border-white/15 bg-white/[0.04] p-1 text-sm">
+    <div className="flex rounded-full border border-line bg-card p-1 text-sm">
       <button
         className={language === "en" ? activeClass : inactiveClass}
         type="button"
@@ -28,5 +28,5 @@ export function LanguageToggle({ language, onChange }: LanguageToggleProps) {
   );
 }
 
-const activeClass = "rounded-full bg-mint px-3 py-1.5 font-semibold text-ink transition";
-const inactiveClass = "rounded-full px-3 py-1.5 text-white/60 transition hover:text-white";
+const activeClass = "rounded-full bg-ink px-3 py-1.5 font-semibold text-white transition";
+const inactiveClass = "rounded-full px-3 py-1.5 text-muted transition hover:text-ink";

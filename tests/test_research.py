@@ -22,6 +22,35 @@ def test_optimizer_returns_simplex_weights() -> None:
     assert np.isfinite(result.objective)
 
 
+def test_yand_converges_on_certified_convex_crra_instance() -> None:
+    rng = np.random.default_rng(5)
+    returns = rng.normal(0.0004, 0.01, size=(250, 6))
+    coefficients = MVSKCoefficients.crra(6.0)
+    assert coefficients.convexity_certified
+    oracle = MVSKOracle(returns, coefficients)
+    result = YANDMVSKOptimizer(oracle, YANDConfig(max_iter=200, tolerance=1e-7)).solve()
+    assert result.converged
+    assert result.kkt_residual <= 1e-7
+    # The exact line search accepts only non-increasing objective values.
+    objectives = [h["objective"] for h in result.history]
+    assert objectives[-1] <= objectives[0] + 1e-12
+
+
+def test_yand_pcg_mode_matches_direct_solution() -> None:
+    rng = np.random.default_rng(9)
+    returns = rng.normal(0.0004, 0.01, size=(250, 6))
+    oracle = MVSKOracle(returns, MVSKCoefficients.crra(6.0))
+    direct = YANDMVSKOptimizer(oracle, YANDConfig(max_iter=200, tolerance=1e-7)).solve()
+    pcg = YANDMVSKOptimizer(
+        oracle, YANDConfig(max_iter=400, tolerance=1e-7, use_pcg_threshold=2)
+    ).solve()
+    assert pcg.method == "pcg"
+    assert pcg.converged
+    # Convex objective: both configurations must reach the same optimum.
+    assert np.isclose(direct.objective, pcg.objective, rtol=1e-6, atol=1e-9)
+    assert np.allclose(direct.weights, pcg.weights, atol=1e-4)
+
+
 def test_screen_mv_and_backtest_pipeline() -> None:
     rng = np.random.default_rng(42)
     frame = pd.DataFrame(
@@ -72,6 +101,57 @@ def test_research_supports_single_asset(monkeypatch) -> None:
     assert report.mvsk_weights == {"MSFT": 1.0}
     assert report.diagnostics["mvsk_method"] == "single_asset_no_optimization"
     assert report.equity_curves["mvsk"]
+
+
+def test_screening_only_sees_training_window(monkeypatch) -> None:
+    rng = np.random.default_rng(33)
+    periods = 160
+    index = pd.date_range("2023-01-02", periods=periods + 1, freq="B")
+    frame = {}
+    for i in range(6):
+        returns = rng.normal(0.001, 0.01, size=periods)
+        frame[f"GOOD{i}"] = 100.0 * np.cumprod(1.0 + np.concatenate(([0.0], returns)))
+    # LEAK collapses during the training window but rallies hard in the test window. Screening
+    # with test-period knowledge would rank it near the top; honest screening must drop it.
+    leak = np.concatenate((np.full(120, -0.005), np.full(periods - 120, 0.05)))
+    frame["LEAK"] = 100.0 * np.cumprod(1.0 + np.concatenate(([0.0], leak)))
+    prices = pd.DataFrame(frame, index=index)
+
+    monkeypatch.setattr("quant_core.research.load_price_history", lambda _config: prices)
+    report = run_research(
+        ResearchConfig(
+            market_data=MarketDataConfig(tickers=tuple(prices.columns)),
+            screener=ScreenerConfig(max_assets=4),
+            train_ratio=0.75,
+        )
+    )
+    assert "LEAK" not in report.selected_tickers
+
+
+def test_research_report_includes_baselines_and_history(monkeypatch) -> None:
+    rng = np.random.default_rng(77)
+    periods = 200
+    index = pd.date_range("2022-01-03", periods=periods + 1, freq="B")
+    returns = rng.normal(0.0006, 0.012, size=(periods, 6))
+    prices = pd.DataFrame(
+        100.0 * np.cumprod(1.0 + np.vstack((np.zeros(6), returns)), axis=0),
+        columns=[f"T{i}" for i in range(6)],
+        index=index,
+    )
+    monkeypatch.setattr("quant_core.research.load_price_history", lambda _config: prices)
+    report = run_research(
+        ResearchConfig(
+            market_data=MarketDataConfig(tickers=tuple(prices.columns)),
+            screener=ScreenerConfig(max_assets=5),
+        )
+    )
+    assert "sharpe" in report.ew_metrics
+    assert "realized_skewness" in report.mvsk_metrics
+    assert "realized_excess_kurtosis" in report.mv_metrics
+    assert "ew" in report.equity_curves
+    assert report.solver_history
+    assert {"iteration", "objective", "kkt_residual"} <= set(report.solver_history[0])
+    assert isinstance(report.diagnostics["convexity_certified"], bool)
 
 
 def test_returns_are_percent_changes_for_full_market_tickers() -> None:

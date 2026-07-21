@@ -9,15 +9,24 @@ const config: Config = {
         display: ["var(--font-display)", "ui-serif", "serif"]
       },
       colors: {
-        ink: "#07100f",
-        panel: "#0d1718",
-        line: "rgba(255,255,255,0.12)",
-        mint: "#7fffd4",
-        violet: "#9b87ff",
-        ice: "#d9fff3"
+        ink: "#0b0b0b",
+        sub: "#52514e",
+        muted: "#898781",
+        paper: "#fafaf9",
+        card: "#ffffff",
+        line: "rgba(11,11,11,0.08)",
+        accent: {
+          DEFAULT: "#0d9488",
+          deep: "#0f766e",
+          soft: "#e9f5f3"
+        },
+        violet: {
+          DEFAULT: "#4a3aa7",
+          soft: "#efedfa"
+        }
       },
       boxShadow: {
-        glow: "0 0 80px rgba(127, 255, 212, 0.16)"
+        card: "0 1px 2px rgba(11,11,11,0.04), 0 8px 24px rgba(11,11,11,0.05)"
       }
     }
   },
